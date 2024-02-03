@@ -101,7 +101,7 @@ bool foo(const uint16_t pulses[], size_t pulseCount) {
         printf("0xCACA5353 syncword not found\n");
         return 1;
     }    
-    printf("0xCACA5353 of syncword found\n");    
+    printf("0xCACA5353 syncword found\n");    
 
     return 0;
 }
