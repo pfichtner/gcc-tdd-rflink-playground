@@ -71,7 +71,6 @@ bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount, uint16_t const
             return false; // unexpected bit duration, invalid format
         }
 
-
         *pulseIndex += 2;
     }
 
@@ -123,7 +122,6 @@ bool checkSyncWord(const unsigned char synword[], const unsigned char pattern[],
 }
 
 bool decode(uint16_t pulses[], size_t pulseCount) {
-
     const int syncWordSize = 8;
     unsigned char syncwordChars[] = {0xCA, 0xCA, 0x53, 0x53};
     size_t syncwordLength = sizeof(syncwordChars) / sizeof(syncwordChars[0]);
@@ -135,7 +133,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
     
     while (pulseIndex + (int)(2 * AVTK_SyncPairsCount + syncWordSize) < pulseCount) {
         u_short preamblePairsFound = 0;
-        for (size_t i = 0; i < 2 * AVTK_SyncPairsCount - 1; i++) {
+        for (size_t i = 0; i < AVTK_SyncPairsCount; i++) {
             if (value_between(pulses[pulseIndex], AVTK_PulseMinDuration, AVTK_PulseMaxDuration)
                 && value_between(pulses[pulseIndex + 1], AVTK_PulseMinDuration, AVTK_PulseMaxDuration)) {
                 preamblePairsFound++;
@@ -150,7 +148,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
         printf("Preamble not found (%i < %i)\n", preamblePairsFound, AVTK_MinSyncPairs);
             return oneMessageProcessed;
         }   
-        printf("Preamble found\n");
+        printf("Preamble found (%i >= %i)\n", preamblePairsFound, AVTK_MinSyncPairs);
 
         uint8_t bitsProccessed = decode_bits(synword, pulses, pulseCount, &pulseIndex, AVTK_PULSE_DURATION_MID_D, 8 * syncwordLength);
         if (!bitsProccessed) {
@@ -178,7 +176,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
         }
 
         // byte address[] = { 0, 0, 0 };
-        uint8_t address[] = { 0, 0, 0 };
+        uint8_t address[] = { 0, 0, 0, 0 };
 
         bool decodeResult = decode_manchester(address, 32, pulses, pulseCount, &pulseIndex, AVTK_PulseMinDuration, AVTK_PulseMaxDuration, 2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration, 0);
         pulses[alteredIndex] = alteredValue ;
@@ -189,7 +187,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
         }
         
 printf("pulseIndex is %i\n", pulseIndex);
-printf("Address : %02x %02x %02x\n", address[0], address[1], address[2]);
+printf("Address : %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3]);
         
         // byte buttons[] = { 0 };
         uint8_t buttons[] = { 0 };
