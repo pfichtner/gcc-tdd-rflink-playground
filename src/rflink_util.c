@@ -122,7 +122,7 @@ bool checkSyncWord(const unsigned char synword[], const unsigned char pattern[],
     return true;
 }
 
-bool foo(uint16_t pulses[], size_t pulseCount) {
+bool decode(uint16_t pulses[], size_t pulseCount) {
 
     const int syncWordSize = 8;
     unsigned char syncwordChars[] = {0xCA, 0xCA, 0x53, 0x53};

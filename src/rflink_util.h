@@ -4,7 +4,7 @@
 #ifndef RFLINK_UTIL_H
 #define RFLINK_UTIL_H
 
-bool foo(const uint16_t pulses[], size_t pulseCount);
+bool decode(const uint16_t pulses[], size_t pulseCount);
 
 #endif // RFLINK_UTIL_H
 
