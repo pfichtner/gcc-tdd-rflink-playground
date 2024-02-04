@@ -123,12 +123,16 @@ bool checkSyncWord(const unsigned char synword[], const unsigned char pattern[],
 }
 
 bool foo(uint16_t pulses[], size_t pulseCount) {
+
+    const int syncWordSize = 8;
+    unsigned char syncwordChars[] = {0xCA, 0xCA, 0x53, 0x53};
+    size_t syncwordLength = sizeof(syncwordChars) / sizeof(syncwordChars[0]);
+    uint8_t synword[syncwordLength];
+
+
     int pulseIndex = 1;
     bool oneMessageProcessed = false;
     
-    const int syncWordSize = 8;
-
-
     while (pulseIndex + (int)(2 * AVTK_SyncPairsCount + syncWordSize) < pulseCount) {
         u_short preamblePairsFound = 0;
         for (size_t i = 0; i < 2 * AVTK_SyncPairsCount - 1; i++) {
@@ -148,23 +152,19 @@ bool foo(uint16_t pulses[], size_t pulseCount) {
         }   
         printf("Preamble found\n");
 
-        unsigned char pattern[] = {0xCA, 0xCA, 0x53, 0x53};
-        size_t patternLength = sizeof(pattern) / sizeof(pattern[0]);
-
-        uint8_t synword[patternLength];
-        uint8_t bitsProccessed = decode_bits(synword, pulses, pulseCount, &pulseIndex, AVTK_PULSE_DURATION_MID_D, 8 * patternLength);
+        uint8_t bitsProccessed = decode_bits(synword, pulses, pulseCount, &pulseIndex, AVTK_PULSE_DURATION_MID_D, 8 * syncwordLength);
         if (!bitsProccessed) {
             printf("Error on syncword decode\n");
             return oneMessageProcessed;
         }
         
         printf("0x");
-        for (size_t i = 0; i < sizeof(pattern) / sizeof(pattern[0]); i++) {
-            printf("%02X", pattern[i]);
+        for (size_t i = 0; i < syncwordLength; i++) {
+            printf("%02X", syncwordChars[i]);
         }
         printf(" syncword");
 
-        if (!checkSyncWord(synword, pattern, patternLength)) {
+        if (!checkSyncWord(synword, syncwordChars, syncwordLength)) {
             printf(" not found\n");
             return oneMessageProcessed;
         }    
