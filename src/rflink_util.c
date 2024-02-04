@@ -27,86 +27,65 @@ bool value_between_(uint16_t value, uint16_t min, uint16_t max) {
     return (value > min && value < max);
 }
 
-bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount, uint16_t const pulses[], const int pulsesCount, int pulseIndex, uint8_t nextBit, bool secondPulse, uint16_t halfBitMinDuration, uint16_t halfBitMaxDuration)
+
+bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount, uint16_t const pulses[], const int pulsesCount, int *pulseIndex, uint16_t shortPulseMinDuration, uint16_t shortPulseMaxDuration, uint16_t longPulseMinDuration, uint16_t longPulseMaxDuration, uint8_t bitOffset)
 {
-    int bitIndex = 0;
-    const uint8_t bitsPerByte = 8;
-    const uint8_t expectedByteCount = expectedBitCount / bitsPerByte;
-    const uint16_t fullBitMinDuration = halfBitMinDuration * 2;
-    const uint16_t fullBitMaxDuration = halfBitMaxDuration * 2;
-
-    while ((pulseIndex < pulsesCount) && (bitIndex < expectedBitCount))
+    if (*pulseIndex + (expectedBitCount - 1) * 2  > pulsesCount)
     {
-        uint16_t pulseDuration = pulses[pulseIndex];
-        int currentFrameByteIndex = bitIndex / bitsPerByte;
-        
-        #ifdef MANCHESTER_DEBUG
-        printf("Manchester: Processing pulseIndex = %i - bitIndex %i - value = %i - frameIndex %i\n", pulseIndex, bitIndex, pulseDuration, currentFrameByteIndex);
+        #ifdef PWM_DEBUG
+        Serial.print(F("PWM: Not enough pulses: *pulseIndex = "));
+        Serial.print(*pulseIndex);
+        Serial.print(F(" - expectedBitCount = "));
+        Serial.print(expectedBitCount);
+        Serial.print(F(" - pulsesCount = "));
+        Serial.print(pulsesCount);
+        Serial.print(F(" - min required pulses = "));
+        Serial.println(*pulseIndex + expectedBitCount * 2);         
         #endif
-
-        if (value_between_(pulseDuration, fullBitMinDuration, fullBitMaxDuration))
-        {
-            // TODO we have some inverted logic so we check viceversa
-            if (false)
-            // if (!secondPulse)
-            {
-                #ifdef MANCHESTER_DEBUG
-                printf("Manchester: Cannot have long pulse as a first pulse: index = %i - value = %i\n", pulseIndex, pulseDuration);
-                #endif
-                return false;
-            }
-
-            frame[currentFrameByteIndex] <<= 1;
-            frame[currentFrameByteIndex] |= nextBit;
-
-            nextBit = 1 - nextBit;
-            bitIndex++;
-        }
-        else if (value_between_(pulseDuration, halfBitMinDuration, halfBitMaxDuration))
-        {
-            // TODO we have some inverted logic so we check viceversa
-            // if (secondPulse)
-            if (true)
-            {
-                frame[currentFrameByteIndex] <<= 1;
-                frame[currentFrameByteIndex] |= nextBit;
-
-                bitIndex++;
-            }
-
-            secondPulse = !secondPulse;
-        }
-        else
-        {
-            #ifdef MANCHESTER_DEBUG
-            printf("Manchester: Pulse has unexpected duration: index = %i - value = %i\n", pulseIndex, pulseDuration);
-            #endif
-            return false;
-        }
-
-        pulseIndex++;
+        return false;
     }
 
-    // The low part of the down front gets mixed with the interframe silence and is thus too long to be placed in the pulses
-    // This means the last bit is never placed in the frame and we must manually add it into the last byte
-    if ((pulseIndex == pulsesCount) && (bitIndex == expectedBitCount - 1))
+    const uint8_t bitsPerByte = 8;
+    const uint8_t endBitCount = expectedBitCount + bitOffset;
+
+    for(uint8_t bitIndex = bitOffset; bitIndex < endBitCount; bitIndex++)
     {
-        frame[expectedByteCount - 1] <<= 1;
-        frame[expectedByteCount - 1] |= nextBit;
-        bitIndex++;
+        int currentFrameByteIndex = bitIndex / bitsPerByte;
+        uint16_t bitDurationHigh = pulses[*pulseIndex];
+        uint16_t bitDurationLow = pulses[*pulseIndex + 1];
+
+        if (value_between_(bitDurationHigh, shortPulseMinDuration, shortPulseMaxDuration) && value_between_(bitDurationLow, longPulseMinDuration, longPulseMaxDuration))
+        {
+            frame[currentFrameByteIndex] |= 1 << (7 - (bitIndex % 8));
+        }
+        else if (!value_between_(bitDurationHigh, longPulseMinDuration, longPulseMaxDuration) || !value_between_(bitDurationLow, shortPulseMinDuration, shortPulseMaxDuration))
+        {
+            #ifdef PWM_DEBUG
+            Serial.print(F("PWM: Invalid duration at pulse "));
+            Serial.print(*pulseIndex);
+            Serial.print(F(" - bit "));
+            Serial.print(bitIndex);
+            Serial.print(F(": "));
+            Serial.println(bitDuration * RFLink::Signal::RawSignal.Multiply);         
+            #endif
+            return false; // unexpected bit duration, invalid format
+        }
+
+
+        *pulseIndex += 2;
     }
 
-    return (bitIndex == expectedBitCount);
+    return true;
 }
 
 
-
 // TODO why can't  we use the function defined in 7_Utils?
+// inline 
 bool value_between(uint16_t value, uint16_t min, uint16_t max) {
     return ((value > min) && (value < max));
 }
 
-    // TODO extract function: this is: isLowPulseIndex
+// inline 
 bool isLowPulseIndex(const int pulseIndex) {
     return (pulseIndex % 2 == 1);
 }
@@ -133,14 +112,6 @@ uint8_t decode_bits(uint8_t frame[], const uint16_t* pulses, const int pulsesCou
     // Check if there are enough bits read
     return bitsRead >= bitsToRead ? 0 : -1;
 }
-
-// Function to convert an integer to binary and print it
-void print_binary(uint8_t value) {
-    for (int i = 7; i >= 0; --i) {
-        printf("%d", (value >> i) & 1);
-    }
-}
-
 
 bool checkSyncWord(const unsigned char synword[], const unsigned char pattern[], size_t length) {
     for (size_t i = 0; i < length; i++) {
@@ -186,52 +157,50 @@ bool foo(uint16_t pulses[], size_t pulseCount) {
             printf("Error on syncword decode\n");
             return oneMessageProcessed;
         }
+        
+        printf("0x");
+        for (size_t i = 0; i < sizeof(pattern) / sizeof(pattern[0]); i++) {
+            printf("%02X", pattern[i]);
+        }
+        printf(" syncword");
+
         if (!checkSyncWord(synword, pattern, patternLength)) {
-            printf("0xCACA5353 syncword not found\n");
+            printf(" not found\n");
             return oneMessageProcessed;
         }    
-        printf("0xCACA5353 syncword found\n");
+        printf(" found\n");
         
         int alteredIndex = pulseIndex;
         uint16_t alteredValue = pulses[pulseIndex];
-         if (isLowPulseIndex(pulseIndex) && bitsProccessed > 0) {
+         if (isLowPulseIndex(pulseIndex)) {
             // the last pulse "decode_bits" processed was high
-printf("adjusting pulses at index %i from %i ", pulseIndex, pulses[pulseIndex]);
             pulses[pulseIndex] = pulses[pulseIndex] - bitsProccessed * AVTK_PulseDuration;
-printf("to %i\n", pulses[pulseIndex]);
         }
 
-        // TODO this 64 bit (8*8) of binary data!!! 10111001100...
-        // byte address[] = { 0, 0, 0, 0 };
-        uint8_t address[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-        
-        bool decodeResult = decode_manchester(address, 64, pulses, pulseCount, pulseIndex, 1, false, AVTK_PulseMinDuration, AVTK_PulseMaxDuration);
-printf("restored pulses at index %i from %i ", alteredIndex, pulses[alteredIndex]);
+        // byte address[] = { 0, 0, 0 };
+        uint8_t address[] = { 0, 0, 0 };
+
+        bool decodeResult = decode_manchester(address, 32, pulses, pulseCount, &pulseIndex, AVTK_PulseMinDuration, AVTK_PulseMaxDuration, 2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration, 0);
         pulses[alteredIndex] = alteredValue ;
-printf("to %i\n", pulses[alteredIndex]);
 
         if (!decodeResult) {
             printf("Could not decode address manchester data\n");
             return oneMessageProcessed;
         }
-        pulseIndex += 64;
-printf("pulseIndex is %i\n", pulseIndex);
-
-        // printf("Address : %02x %02x %02x %02x %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
-        printf("Address: %i %i %i %i %i %i %i %i\n", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
         
+printf("pulseIndex is %i\n", pulseIndex);
+printf("Address : %02x %02x %02x\n", address[0], address[1], address[2]);
         
         // byte buttons[] = { 0 };
         uint8_t buttons[] = { 0 };
-        if (!decode_manchester(buttons, 2, pulses, pulseCount, pulseIndex, 1, false, AVTK_PulseMinDuration, AVTK_PulseMaxDuration)) {
+        if (!decode_manchester(buttons, 2, pulses, pulseCount, &pulseIndex, AVTK_PulseMinDuration, AVTK_PulseMaxDuration, 2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration, 0)) {
             printf("Could not decode buttons manchester data\n");
             return oneMessageProcessed;
         }    
-        pulseIndex += 2;
         printf("Buttons: %02x\n", buttons[0]);    
 
         pulseIndex += 7; // CRC
-        pulseIndex += 3; // ???
+        pulseIndex += 1; // ???
 
         oneMessageProcessed = true;
     }
