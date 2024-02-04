@@ -211,14 +211,17 @@ printf("pulseIndex is %i\n", pulseIndex);
         
         // byte buttons[] = { 0 };
         uint8_t buttons[] = { 0 };
-        if (!decode_manchester(buttons, 2, pulses, pulseCount, &pulseIndex, AVTK_PulseMinDuration, AVTK_PulseMaxDuration, 2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration, 0)) {
+        if (!decode_manchester(buttons, 1, pulses, pulseCount, &pulseIndex, AVTK_PulseMinDuration, AVTK_PulseMaxDuration, 2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration, 0)) {
             printf("Could not decode buttons manchester data\n");
             return oneMessageProcessed;
         }    
+        // TODO we would have to shift back the result because we shifted it too much to the left because we think that everything has 8 bits
         printf("Buttons: %02x\n", buttons[0]);    
 
+printf("pulseIndex is %i\n", pulseIndex);
+
         pulseIndex += 7; // CRC
-        pulseIndex += 1; // ???
+        pulseIndex += 3; // ???
 
         oneMessageProcessed = true;
     }
