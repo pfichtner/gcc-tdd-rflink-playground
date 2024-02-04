@@ -217,7 +217,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
         reverseAndNegateBitPattern(address, sizeof(address));
         
 printf("pulseIndex is %i\n", pulseIndex);
-printf("Address : %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3]);
+printf("Address: %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3]);
         
         // byte buttons[] = { 0 };
         uint8_t buttons[] = { 0 };
