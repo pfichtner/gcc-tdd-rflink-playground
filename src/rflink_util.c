@@ -192,36 +192,38 @@ bool foo(uint16_t pulses[], size_t pulseCount) {
         }    
         printf("0xCACA5353 syncword found\n");
         
-        if (isLowPulseIndex(pulseIndex) && bitsProccessed > 0) {
+        int alteredIndex = pulseIndex;
+        uint16_t alteredValue = pulses[pulseIndex];
+         if (isLowPulseIndex(pulseIndex) && bitsProccessed > 0) {
             // the last pulse "decode_bits" processed was high
-            // TODO memorize to revert before return
 printf("adjusting pulses at index %i from %i ", pulseIndex, pulses[pulseIndex]);
             pulses[pulseIndex] = pulses[pulseIndex] - bitsProccessed * AVTK_PulseDuration;
 printf("to %i\n", pulses[pulseIndex]);
         }
 
-
-        // TODO see Plugin_017
-        // byte nextBit = 0;
-        uint8_t nextBit = 1;
-        bool secondPulse = false;
-
         // TODO this 64 bit (8*8) of binary data!!! 10111001100...
-    //    byte address[] = { 0, 0, 0, 0 };
+        // byte address[] = { 0, 0, 0, 0 };
         uint8_t address[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-        if (!decode_manchester(address, 64, pulses, pulseCount, pulseIndex, nextBit, secondPulse, AVTK_PulseMinDuration, AVTK_PulseMaxDuration)) {
+        
+        bool decodeResult = decode_manchester(address, 64, pulses, pulseCount, pulseIndex, 1, false, AVTK_PulseMinDuration, AVTK_PulseMaxDuration);
+printf("restored pulses at index %i from %i ", alteredIndex, pulses[alteredIndex]);
+        pulses[alteredIndex] = alteredValue ;
+printf("to %i\n", pulses[alteredIndex]);
+
+        if (!decodeResult) {
             printf("Could not decode address manchester data\n");
             return oneMessageProcessed;
         }
         pulseIndex += 64;
 printf("pulseIndex is %i\n", pulseIndex);
+
         // printf("Address : %02x %02x %02x %02x %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
         printf("Address: %i %i %i %i %i %i %i %i\n", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
         
         
-    //    byte buttons[] = { 0 };
+        // byte buttons[] = { 0 };
         uint8_t buttons[] = { 0 };
-        if (!decode_manchester(buttons, 2, pulses, pulseCount, pulseIndex, nextBit, secondPulse, AVTK_PulseMinDuration, AVTK_PulseMaxDuration)) {
+        if (!decode_manchester(buttons, 2, pulses, pulseCount, pulseIndex, 1, false, AVTK_PulseMinDuration, AVTK_PulseMaxDuration)) {
             printf("Could not decode buttons manchester data\n");
             return oneMessageProcessed;
         }    
