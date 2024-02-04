@@ -121,6 +121,35 @@ bool checkSyncWord(const unsigned char synword[], const unsigned char pattern[],
     return true;
 }
 
+// Function to reverse the bits in a byte
+uint8_t reverseByte(uint8_t byte) {
+    uint8_t result = 0;
+    for (int i = 0; i < 8; i++) {
+        result |= ((byte >> i) & 0x01) << (7 - i);
+    }
+    return result;
+}
+
+// Function to reverse the order of the elements and negate the bits in an array
+void reverseAndNegateBitPattern(uint8_t *array, int size) {
+    for (int i = 0; i < size / 2; i++) {
+        // Swap elements at positions i and size - 1 - i
+        uint8_t temp = array[i];
+        array[i] = array[size - 1 - i];
+        array[size - 1 - i] = temp;
+
+        // Negate the bits in each byte
+        array[i] = reverseByte(array[i]);
+        array[size - 1 - i] = reverseByte(array[size - 1 - i]);
+    }
+
+    // If the array size is odd, negate the bits in the middle element
+    if (size % 2 != 0) {
+        array[size / 2] = reverseByte(array[size / 2]);
+    }
+}
+
+
 bool decode(uint16_t pulses[], size_t pulseCount) {
     const int syncWordSize = 8;
     unsigned char syncwordChars[] = {0xCA, 0xCA, 0x53, 0x53};
@@ -185,6 +214,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
             printf("Could not decode address manchester data\n");
             return oneMessageProcessed;
         }
+        reverseAndNegateBitPattern(address, sizeof(address));
         
 printf("pulseIndex is %i\n", pulseIndex);
 printf("Address : %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3]);
