@@ -121,34 +121,24 @@ bool checkSyncWord(const unsigned char synword[], const unsigned char pattern[],
     return true;
 }
 
-// Function to reverse the bits in a byte
-uint8_t reverseByte(uint8_t byte) {
-    uint8_t result = 0;
-    for (int i = 0; i < 8; i++) {
-        result |= ((byte >> i) & 0x01) << (7 - i);
-    }
-    return result;
-}
-
-// Function to reverse the order of the elements and negate the bits in an array
-void reverseAndNegateBitPattern(uint8_t *array, int size) {
-    for (int i = 0; i < size / 2; i++) {
-        // Swap elements at positions i and size - 1 - i
+void reverseAddress(uint8_t *array, size_t size) {
+    for (size_t i = 0; i < size / 2; ++i) {
         uint8_t temp = array[i];
         array[i] = array[size - 1 - i];
         array[size - 1 - i] = temp;
-
-        // Negate the bits in each byte
-        array[i] = reverseByte(array[i]);
-        array[size - 1 - i] = reverseByte(array[size - 1 - i]);
     }
 
-    // If the array size is odd, negate the bits in the middle element
-    if (size % 2 != 0) {
-        array[size / 2] = reverseByte(array[size / 2]);
+    for (size_t i = 0; i < size; ++i) {
+        uint8_t value = array[i];
+        uint8_t reversedValue = 0;
+
+        for (int j = 0; j < 8; ++j) {
+            reversedValue |= ((value >> j) & 1) << (7 - j);
+        }
+
+        array[i] = reversedValue;
     }
 }
-
 
 bool decode(uint16_t pulses[], size_t pulseCount) {
     const int syncWordSize = 8;
@@ -204,7 +194,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
             pulses[pulseIndex] = pulses[pulseIndex] - bitsProccessed * AVTK_PulseDuration;
         }
 
-        // byte address[] = { 0, 0, 0 };
+        // byte address[] = { 0, 0, 0, 0 };
         uint8_t address[] = { 0, 0, 0, 0 };
 
         bool decodeResult = decode_manchester(address, 32, pulses, pulseCount, &pulseIndex, AVTK_PulseMinDuration, AVTK_PulseMaxDuration, 2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration, 0);
@@ -214,10 +204,11 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
             printf("Could not decode address manchester data\n");
             return oneMessageProcessed;
         }
-        reverseAndNegateBitPattern(address, sizeof(address));
+printf("Address:          %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3]);
+        reverseAddress(address, sizeof(address));
+printf("Address reversed: %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3]);
         
 printf("pulseIndex is %i\n", pulseIndex);
-printf("Address: %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3]);
         
         // byte buttons[] = { 0 };
         uint8_t buttons[] = { 0 };
