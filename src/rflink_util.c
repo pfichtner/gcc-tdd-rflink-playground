@@ -159,79 +159,80 @@ bool foo(uint16_t pulses[], size_t pulseCount) {
 
 
     while (pulseIndex + (int)(2 * AVTK_SyncPairsCount + syncWordSize) < pulseCount) {
-    u_short preamblePairsFound = 0;
-    for (size_t i = 0; i < 2 * AVTK_SyncPairsCount - 1; i++) {
-        if (value_between(pulses[pulseIndex], AVTK_PulseMinDuration, AVTK_PulseMaxDuration)
-            && value_between(pulses[pulseIndex + 1], AVTK_PulseMinDuration, AVTK_PulseMaxDuration)) {
-            preamblePairsFound++;
-        } else if (preamblePairsFound > 0) {
-            // if we didn't already had a match, we ignore as mismatch, otherwise we break here
-            break;
+        u_short preamblePairsFound = 0;
+        for (size_t i = 0; i < 2 * AVTK_SyncPairsCount - 1; i++) {
+            if (value_between(pulses[pulseIndex], AVTK_PulseMinDuration, AVTK_PulseMaxDuration)
+                && value_between(pulses[pulseIndex + 1], AVTK_PulseMinDuration, AVTK_PulseMaxDuration)) {
+                preamblePairsFound++;
+            } else if (preamblePairsFound > 0) {
+                // if we didn't already had a match, we ignore as mismatch, otherwise we break here
+                break;
+            }
+            pulseIndex += 2;
         }
-        pulseIndex += 2;
-    }
 
-    if (preamblePairsFound < AVTK_MinSyncPairs) {
-    printf("Preamble not found (%i < %i)\n", preamblePairsFound, AVTK_MinSyncPairs);
-        return oneMessageProcessed;
-    }   
-    printf("Preamble found\n");
+        if (preamblePairsFound < AVTK_MinSyncPairs) {
+        printf("Preamble not found (%i < %i)\n", preamblePairsFound, AVTK_MinSyncPairs);
+            return oneMessageProcessed;
+        }   
+        printf("Preamble found\n");
 
-    unsigned char pattern[] = {0xCA, 0xCA, 0x53, 0x53};
-    size_t patternLength = sizeof(pattern) / sizeof(pattern[0]);
+        unsigned char pattern[] = {0xCA, 0xCA, 0x53, 0x53};
+        size_t patternLength = sizeof(pattern) / sizeof(pattern[0]);
 
-    uint8_t synword[patternLength];
-    uint8_t bitsProccessed = decode_bits(synword, pulses, pulseCount, &pulseIndex, AVTK_PULSE_DURATION_MID_D, 8 * patternLength);
-    if (!bitsProccessed) {
-        printf("Error on syncword decode\n");
-        return oneMessageProcessed;
-    }
-    if (!checkSyncWord(synword, pattern, patternLength)) {
-        printf("0xCACA5353 syncword not found\n");
-        return oneMessageProcessed;
-    }    
-    printf("0xCACA5353 syncword found\n");
-    
-    if (isLowPulseIndex(pulseIndex) && bitsProccessed > 0) {
-        // the last pulse "decode_bits" processed was high
-        // TODO memorize to revert before return
+        uint8_t synword[patternLength];
+        uint8_t bitsProccessed = decode_bits(synword, pulses, pulseCount, &pulseIndex, AVTK_PULSE_DURATION_MID_D, 8 * patternLength);
+        if (!bitsProccessed) {
+            printf("Error on syncword decode\n");
+            return oneMessageProcessed;
+        }
+        if (!checkSyncWord(synword, pattern, patternLength)) {
+            printf("0xCACA5353 syncword not found\n");
+            return oneMessageProcessed;
+        }    
+        printf("0xCACA5353 syncword found\n");
+        
+        if (isLowPulseIndex(pulseIndex) && bitsProccessed > 0) {
+            // the last pulse "decode_bits" processed was high
+            // TODO memorize to revert before return
 printf("adjusting pulses at index %i from %i ", pulseIndex, pulses[pulseIndex]);
-        pulses[pulseIndex] = pulses[pulseIndex] - bitsProccessed * AVTK_PulseDuration;
+            pulses[pulseIndex] = pulses[pulseIndex] - bitsProccessed * AVTK_PulseDuration;
 printf("to %i\n", pulses[pulseIndex]);
-    }
+        }
 
 
-    // TODO see Plugin_017
-    // byte nextBit = 0;
-    uint8_t nextBit = 1;
-    bool secondPulse = false;
+        // TODO see Plugin_017
+        // byte nextBit = 0;
+        uint8_t nextBit = 1;
+        bool secondPulse = false;
 
-    // TODO this 64 bit (8*8) of binary data!!! 10111001100...
-//    byte address[] = { 0, 0, 0, 0 };
-    uint8_t address[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-    if (!decode_manchester(address, 64, pulses, pulseCount, pulseIndex, nextBit, secondPulse, AVTK_PulseMinDuration, AVTK_PulseMaxDuration)) {
-        printf("Could not decode address manchester data\n");
-        return oneMessageProcessed;
-    }
-    pulseIndex += 64;
+        // TODO this 64 bit (8*8) of binary data!!! 10111001100...
+    //    byte address[] = { 0, 0, 0, 0 };
+        uint8_t address[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+        if (!decode_manchester(address, 64, pulses, pulseCount, pulseIndex, nextBit, secondPulse, AVTK_PulseMinDuration, AVTK_PulseMaxDuration)) {
+            printf("Could not decode address manchester data\n");
+            return oneMessageProcessed;
+        }
+        pulseIndex += 64;
 printf("pulseIndex is %i\n", pulseIndex);
-    // printf("Address : %02x %02x %02x %02x %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
-    printf("Address: %i %i %i %i %i %i %i %i\n", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
-    
-    
-//    byte buttons[] = { 0 };
-    uint8_t buttons[] = { 0 };
-    if (!decode_manchester(buttons, 2, pulses, pulseCount, pulseIndex, nextBit, secondPulse, AVTK_PulseMinDuration, AVTK_PulseMaxDuration)) {
-        printf("Could not decode buttons manchester data\n");
-        return oneMessageProcessed;
-    }    
-    pulseIndex += 2;
-    printf("Buttons: %02x\n", buttons[0]);    
+        // printf("Address : %02x %02x %02x %02x %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
+        printf("Address: %i %i %i %i %i %i %i %i\n", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
+        
+        
+    //    byte buttons[] = { 0 };
+        uint8_t buttons[] = { 0 };
+        if (!decode_manchester(buttons, 2, pulses, pulseCount, pulseIndex, nextBit, secondPulse, AVTK_PulseMinDuration, AVTK_PulseMaxDuration)) {
+            printf("Could not decode buttons manchester data\n");
+            return oneMessageProcessed;
+        }    
+        pulseIndex += 2;
+        printf("Buttons: %02x\n", buttons[0]);    
 
-    pulseIndex += 7; // CRC
-    pulseIndex += 3; // ???
+        pulseIndex += 7; // CRC
+        pulseIndex += 3; // ???
 
-    oneMessageProcessed = true;
+        oneMessageProcessed = true;
     }
+
     return oneMessageProcessed;
 }
