@@ -175,11 +175,10 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
             return oneMessageProcessed;
         }
         
-        printf("0x");
+        printf("Syncword 0x");
         for (size_t i = 0; i < syncwordLength; i++) {
             printf("%02X", syncwordChars[i]);
         }
-        printf(" syncword");
 
         if (!checkSyncWord(synword, syncwordChars, syncwordLength)) {
             printf(" not found\n");
