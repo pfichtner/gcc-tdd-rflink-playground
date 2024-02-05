@@ -28,12 +28,14 @@ bool value_between_(uint16_t value, uint16_t min, uint16_t max) {
 }
 
 
-bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount, uint16_t const pulses[], const int pulsesCount, int *pulseIndex, uint16_t shortPulseMinDuration, uint16_t shortPulseMaxDuration, uint16_t longPulseMinDuration, uint16_t longPulseMaxDuration, uint8_t bitOffset)
+// TODO we could add parameter of manchester/inversed manchester
+// TODO we could add parameter "bitsPerByte"
+bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount, uint16_t const pulses[], const int pulsesCount, int *pulseIndex, uint16_t shortPulseMinDuration, uint16_t shortPulseMaxDuration, uint16_t longPulseMinDuration, uint16_t longPulseMaxDuration, uint8_t bitOffset, bool lsb)
 {
     if (*pulseIndex + (expectedBitCount - 1) * 2  > pulsesCount)
     {
         #ifdef PWM_DEBUG
-        Serial.print(F("PWM: Not enough pulses: *pulseIndex = "));
+        Serial.print(F("MANCHESTER_DEBUG: Not enough pulses: *pulseIndex = "));
         Serial.print(*pulseIndex);
         Serial.print(F(" - expectedBitCount = "));
         Serial.print(expectedBitCount);
@@ -56,12 +58,13 @@ bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount, uint16_t const
 
         if (value_between_(bitDurationHigh, shortPulseMinDuration, shortPulseMaxDuration) && value_between_(bitDurationLow, longPulseMinDuration, longPulseMaxDuration))
         {
-            frame[currentFrameByteIndex] |= 1 << (7 - (bitIndex % 8));
+            uint8_t bitMask = lsb ? 1 << ((bitIndex % bitsPerByte)) : 1 << ((bitsPerByte-1) - (bitIndex % bitsPerByte));
+            frame[currentFrameByteIndex] |= bitMask;
         }
         else if (!value_between_(bitDurationHigh, longPulseMinDuration, longPulseMaxDuration) || !value_between_(bitDurationLow, shortPulseMinDuration, shortPulseMaxDuration))
         {
             #ifdef PWM_DEBUG
-            Serial.print(F("PWM: Invalid duration at pulse "));
+            Serial.print(F("MANCHESTER_DEBUG: Invalid duration at pulse "));
             Serial.print(*pulseIndex);
             Serial.print(F(" - bit "));
             Serial.print(bitIndex);
@@ -89,9 +92,6 @@ bool isLowPulseIndex(const int pulseIndex) {
     return (pulseIndex % 2 == 1);
 }
 
-
-// TODO Add parameter bool if frame[] values consumed should be decreased (pulses[i] = pulses[i] - pulseDuration)
-// TODO change return type to int? --> remaining bits (if we didn't consume all bits in the inner loop), return -1 on ERR
 uint8_t decode_bits(uint8_t frame[], const uint16_t* pulses, const int pulsesCount, int *pulseIndex, uint16_t pulseDuration, size_t bitsToRead) {
     size_t bitsRead = 0;
 
@@ -121,24 +121,6 @@ bool checkSyncWord(const unsigned char synword[], const unsigned char pattern[],
     return true;
 }
 
-void reverseAddress(uint8_t *array, size_t size) {
-    for (size_t i = 0; i < size / 2; ++i) {
-        uint8_t temp = array[i];
-        array[i] = array[size - 1 - i];
-        array[size - 1 - i] = temp;
-    }
-
-    for (size_t i = 0; i < size; ++i) {
-        uint8_t value = array[i];
-        uint8_t reversedValue = 0;
-
-        for (int j = 0; j < 8; ++j) {
-            reversedValue |= ((value >> j) & 1) << (7 - j);
-        }
-
-        array[i] = reversedValue;
-    }
-}
 
 bool decode(uint16_t pulses[], size_t pulseCount) {
     const int syncWordSize = 8;
@@ -196,22 +178,20 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
         // byte address[] = { 0, 0, 0, 0 };
         uint8_t address[] = { 0, 0, 0, 0 };
 
-        bool decodeResult = decode_manchester(address, 32, pulses, pulseCount, &pulseIndex, AVTK_PulseMinDuration, AVTK_PulseMaxDuration, 2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration, 0);
+        bool decodeResult = decode_manchester(address, 32, pulses, pulseCount, &pulseIndex, AVTK_PulseMinDuration, AVTK_PulseMaxDuration, 2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration, 0, true);
         pulses[alteredIndex] = alteredValue ;
 
         if (!decodeResult) {
             printf("Could not decode address manchester data\n");
             return oneMessageProcessed;
         }
-printf("Address:          %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3]);
-        reverseAddress(address, sizeof(address));
-printf("Address reversed: %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3]);
+printf("Address (reversed): %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3]);
         
 printf("pulseIndex is %i\n", pulseIndex);
         
         // byte buttons[] = { 0 };
         uint8_t buttons[] = { 0 };
-        if (!decode_manchester(buttons, 1, pulses, pulseCount, &pulseIndex, AVTK_PulseMinDuration, AVTK_PulseMaxDuration, 2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration, 0)) {
+        if (!decode_manchester(buttons, 1, pulses, pulseCount, &pulseIndex, AVTK_PulseMinDuration, AVTK_PulseMaxDuration, 2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration, 0, true)) {
             printf("Could not decode buttons manchester data\n");
             return oneMessageProcessed;
         }    
