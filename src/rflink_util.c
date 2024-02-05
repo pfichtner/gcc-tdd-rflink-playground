@@ -203,7 +203,7 @@ printf("pulseIndex is %i\n", pulseIndex);
         // pulseIndex += 7; // CRC
         // pulseIndex += 3; // ???
 
-printf("remaining %i %i %i %i %i %i %i %i %i \n", pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration);
+printf("remaining %i %i %i %i %i %i %i %i %i %i\n", pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration);
         
 printf("pulseIndex is %i\n", pulseIndex);
         oneMessageProcessed = true;
