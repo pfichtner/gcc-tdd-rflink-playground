@@ -28,8 +28,6 @@ bool value_between_(uint16_t value, uint16_t min, uint16_t max) {
 }
 
 
-// TODO we could add parameter of manchester/inversed manchester
-// TODO we could add parameter "bitsPerByte"
 bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount, uint16_t const pulses[], const int pulsesCount, int *pulseIndex, uint16_t shortPulseMinDuration, uint16_t shortPulseMaxDuration, uint16_t longPulseMinDuration, uint16_t longPulseMaxDuration, uint8_t bitOffset, bool lsb)
 {
     if (*pulseIndex + (expectedBitCount - 1) * 2  > pulsesCount)
@@ -47,21 +45,23 @@ bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount, uint16_t const
         return false;
     }
 
+    // TODO we could add parameter "bitsPerByte"
     const uint8_t bitsPerByte = 8;
     const uint8_t endBitCount = expectedBitCount + bitOffset;
 
     for(uint8_t bitIndex = bitOffset; bitIndex < endBitCount; bitIndex++)
     {
         int currentFrameByteIndex = bitIndex / bitsPerByte;
-        uint16_t bitDurationHigh = pulses[*pulseIndex];
-        uint16_t bitDurationLow = pulses[*pulseIndex + 1];
+        uint16_t bitDuration0 = pulses[*pulseIndex];
+        uint16_t bitDuration1 = pulses[*pulseIndex + 1];
 
-        if (value_between_(bitDurationHigh, shortPulseMinDuration, shortPulseMaxDuration) && value_between_(bitDurationLow, longPulseMinDuration, longPulseMaxDuration))
+        // TODO we could add parameter of manchester/inversed manchester
+        if (value_between_(bitDuration0, shortPulseMinDuration, shortPulseMaxDuration) && value_between_(bitDuration1, longPulseMinDuration, longPulseMaxDuration))
         {
-            uint8_t bitMask = lsb ? 1 << ((bitIndex % bitsPerByte)) : 1 << ((bitsPerByte-1) - (bitIndex % bitsPerByte));
-            frame[currentFrameByteIndex] |= bitMask;
+            uint8_t offset = bitIndex % bitsPerByte;
+            frame[currentFrameByteIndex] |= 1 << (lsb ? offset : (bitsPerByte - 1 - offset));
         }
-        else if (!value_between_(bitDurationHigh, longPulseMinDuration, longPulseMaxDuration) || !value_between_(bitDurationLow, shortPulseMinDuration, shortPulseMaxDuration))
+        else if (!value_between_(bitDuration0, longPulseMinDuration, longPulseMaxDuration) || !value_between_(bitDuration1, shortPulseMinDuration, shortPulseMaxDuration))
         {
             #ifdef PWM_DEBUG
             Serial.print(F("MANCHESTER_DEBUG: Invalid duration at pulse "));
