@@ -95,7 +95,7 @@ bool isLowPulseIndex(const int pulseIndex) {
 uint8_t decode_bits(uint8_t frame[], const uint16_t* pulses, const int pulsesCount, int *pulseIndex, uint16_t pulseDuration, size_t bitsToRead) {
     size_t bitsRead = 0;
 
-    for (size_t i = 0; i < pulsesCount && bitsRead < bitsToRead; i++, (*pulseIndex)++) {
+    for (size_t i = 0; *pulseIndex + i < pulsesCount && bitsRead < bitsToRead; i++, (*pulseIndex)++) {
         size_t bits = (size_t)((pulses[*pulseIndex] + (pulseDuration / 2)) / pulseDuration);
 
         for (size_t j = 0; j < bits; j++) {
@@ -200,9 +200,12 @@ printf("pulseIndex is %i\n", pulseIndex);
 
 printf("pulseIndex is %i\n", pulseIndex);
 
-        pulseIndex += 7; // CRC
-        pulseIndex += 3; // ???
+        // pulseIndex += 7; // CRC
+        // pulseIndex += 3; // ???
 
+printf("remaining %i %i %i %i %i %i %i %i %i \n", pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration);
+        
+printf("pulseIndex is %i\n", pulseIndex);
         oneMessageProcessed = true;
     }
 
