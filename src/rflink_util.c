@@ -185,7 +185,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
             printf("Could not decode address manchester data\n");
             return oneMessageProcessed;
         }
-printf("Address (reversed): %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3]);
+printf("Address (lsb): %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3]);
         
 printf("pulseIndex is %i\n", pulseIndex);
         
@@ -203,7 +203,17 @@ printf("pulseIndex is %i\n", pulseIndex);
         // pulseIndex += 7; // CRC
         // pulseIndex += 3; // ???
 
-printf("remaining %i %i %i %i %i %i %i %i %i %i\n", pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration, pulses[pulseIndex++]/AVTK_PulseDuration);
+        int remainingPulsesCount = 10;
+        int remaining[remainingPulsesCount];
+        for (int i = 0; i < remainingPulsesCount; i++) {
+            remaining[i] = (pulses[pulseIndex++] + AVTK_PulseDuration / 2) / AVTK_PulseDuration;
+        }
+
+printf("remaining ");
+for (int i = 0; i < remainingPulsesCount; i++) {
+    printf("%i ", remaining[i]);
+}
+printf("\n");        
         
 printf("pulseIndex is %i\n", pulseIndex);
         oneMessageProcessed = true;
