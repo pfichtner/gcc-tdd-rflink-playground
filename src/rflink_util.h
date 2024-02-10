@@ -7,4 +7,3 @@
 bool decode(const uint16_t pulses[], size_t pulseCount);
 
 #endif // RFLINK_UTIL_H
-
