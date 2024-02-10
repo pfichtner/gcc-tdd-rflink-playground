@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <string.h>
 
+#define PLUGIN_077_DEBUG
 // #define MANCHESTER_DEBUG
 
 #define AVTK_PULSE_DURATION_MID_D 480
@@ -32,15 +33,8 @@ bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount, uint16_t const
 {
     if (*pulseIndex + (expectedBitCount - 1) * 2  > pulsesCount)
     {
-        #ifdef PWM_DEBUG
-        Serial.print(F("MANCHESTER_DEBUG: Not enough pulses: *pulseIndex = "));
-        Serial.print(*pulseIndex);
-        Serial.print(F(" - expectedBitCount = "));
-        Serial.print(expectedBitCount);
-        Serial.print(F(" - pulsesCount = "));
-        Serial.print(pulsesCount);
-        Serial.print(F(" - min required pulses = "));
-        Serial.println(*pulseIndex + expectedBitCount * 2);         
+        #ifdef MANCHESTER_DEBUG
+        printf("MANCHESTER_DEBUG: Not enough pulses: *pulseIndex = %d - expectedBitCount = %d - pulsesCount = %d - min required pulses = %d\n", *pulseIndex, expectedBitCount, pulsesCount, *pulseIndex + expectedBitCount * 2);
         #endif
         return false;
     }
@@ -63,13 +57,8 @@ bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount, uint16_t const
         }
         else if (!value_between_(bitDuration0, longPulseMinDuration, longPulseMaxDuration) || !value_between_(bitDuration1, shortPulseMinDuration, shortPulseMaxDuration))
         {
-            #ifdef PWM_DEBUG
-            Serial.print(F("MANCHESTER_DEBUG: Invalid duration at pulse "));
-            Serial.print(*pulseIndex);
-            Serial.print(F(" - bit "));
-            Serial.print(bitIndex);
-            Serial.print(F(": "));
-            Serial.println(bitDuration * RFLink::Signal::RawSignal.Multiply);         
+            #ifdef MANCHESTER_DEBUG
+            printf("MANCHESTER_DEBUG: Invalid duration at pulse %d - bit %d: %d\n", *pulseIndex, bitIndex, bitDuration0 * RFLink::Signal::RawSignal.Multiply);
             #endif
             return false; // unexpected bit duration, invalid format
         }
@@ -146,27 +135,39 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
         }
 
         if (preamblePairsFound < AVTK_MinSyncPairs) {
-        printf("Preamble not found (%i < %i)\n", preamblePairsFound, AVTK_MinSyncPairs);
+            #ifdef PLUGIN_077_DEBUG
+            printf("Preamble not found (%i < %i)\n", preamblePairsFound, AVTK_MinSyncPairs);
+            #endif
             return oneMessageProcessed;
         }   
+        #ifdef PLUGIN_077_DEBUG
         printf("Preamble found (%i >= %i)\n", preamblePairsFound, AVTK_MinSyncPairs);
+        #endif
 
         uint8_t bitsProccessed = decode_bits(synword, pulses, pulseCount, &pulseIndex, AVTK_PULSE_DURATION_MID_D, 8 * syncwordLength);
         if (!bitsProccessed) {
+            #ifdef PLUGIN_077_DEBUG
+            #endif
             printf("Error on syncword decode\n");
             return oneMessageProcessed;
         }
         
+        #ifdef PLUGIN_077_DEBUG
         printf("Syncword 0x");
         for (size_t i = 0; i < syncwordLength; i++) {
             printf("%02X", syncwordChars[i]);
         }
+        #endif
 
         if (!checkSyncWord(synword, syncwordChars, syncwordLength)) {
+            #ifdef PLUGIN_077_DEBUG
             printf(" not found\n");
+            #endif
             return oneMessageProcessed;
-        }    
+        }
+        #ifdef PLUGIN_077_DEBUG
         printf(" found\n");
+        #endif
         
         int alteredIndex = pulseIndex;
         uint16_t alteredValue = pulses[pulseIndex];
@@ -182,40 +183,48 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
         pulses[alteredIndex] = alteredValue ;
 
         if (!decodeResult) {
+            #ifdef PLUGIN_077_DEBUG
             printf("Could not decode address manchester data\n");
+            #endif
             return oneMessageProcessed;
         }
-printf("Address (lsb): %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3]);
-        
-printf("pulseIndex is %i\n", pulseIndex);
+        #ifdef PLUGIN_077_DEBUG
+        printf("Address (lsb): %02x %02x %02x %02x\n", address[0], address[1], address[2], address[3]);
+        printf("pulseIndex is %i\n", pulseIndex);
+        #endif
         
         // byte buttons[] = { 0 };
         uint8_t buttons[] = { 0 };
         if (!decode_manchester(buttons, 1, pulses, pulseCount, &pulseIndex, AVTK_PulseMinDuration, AVTK_PulseMaxDuration, 2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration, 0, true)) {
+            #ifdef PLUGIN_077_DEBUG
+            #endif
             printf("Could not decode buttons manchester data\n");
             return oneMessageProcessed;
         }    
         // TODO we would have to shift back the result because we shifted it too much to the left because we think that everything has 8 bits
-        printf("Buttons: %02x\n", buttons[0]);    
-
-printf("pulseIndex is %i\n", pulseIndex);
+        #ifdef PLUGIN_077_DEBUG
+        printf("Buttons: %02x\n", buttons[0]);
+        printf("pulseIndex is %i\n", pulseIndex);
+        #endif
 
         // pulseIndex += 7; // CRC
         // pulseIndex += 3; // ???
+        int remainingPulsesCount = 7 + 3;
 
-        int remainingPulsesCount = 10;
         int remaining[remainingPulsesCount];
         for (int i = 0; i < remainingPulsesCount; i++) {
             remaining[i] = (pulses[pulseIndex++] + AVTK_PulseDuration / 2) / AVTK_PulseDuration;
         }
 
-printf("remaining ");
-for (int i = 0; i < remainingPulsesCount; i++) {
-    printf("%i ", remaining[i]);
-}
-printf("\n");        
-        
-printf("pulseIndex is %i\n", pulseIndex);
+        #ifdef PLUGIN_077_DEBUG
+        printf("remaining ");
+        for (int i = 0; i < remainingPulsesCount; i++) {
+            printf("%i ", remaining[i]);
+        }
+        printf("\n");
+        printf("pulseIndex is %i\n", pulseIndex);
+        #endif
+
         oneMessageProcessed = true;
     }
 
