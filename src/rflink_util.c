@@ -104,6 +104,7 @@ uint8_t decode_bits(uint8_t frame[], const uint16_t *pulses,
       frame[bitsRead / 8] |= i % 2 == 0;
       bitsRead++;
       if (bitsRead >= bitsToRead) {
+        frame[bitsRead / 8] <<= (8 - bitsRead) % 8;
         return j + 1;
       }
     }
@@ -235,22 +236,18 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
     printf("pulseIndex is %i\n", pulseIndex);
 #endif
 
-    // pulseIndex += 7; // CRC
-    // pulseIndex += 3; // ???
-    int remainingPulsesCount = 7 + 3;
-
-    int remaining[remainingPulsesCount];
-    for (int i = 0; i < remainingPulsesCount; i++) {
-      remaining[i] =
-          (pulses[pulseIndex++] + AVTK_PulseDuration / 2) / AVTK_PulseDuration;
+    // byte remaining[] = { 0, 0, 0 };
+    uint8_t remaining[] = { 0, 0, 0 };
+    if (!decode_bits(remaining, pulses, pulseCount, &pulseIndex, AVTK_PULSE_DURATION_MID_D, 21)) {
+#ifdef PLUGIN_077_DEBUG
+      printf("Error on remaining bits decode\n");
+#endif
+      return oneMessageProcessed;
     }
+    pulseIndex++;
 
 #ifdef PLUGIN_077_DEBUG
-    printf("remaining ");
-    for (int i = 0; i < remainingPulsesCount; i++) {
-      printf("%i ", remaining[i]);
-    }
-    printf("\n");
+    printf("remaining: %02x%02x%02x\n", remaining[0], remaining[1], remaining[2]);
     printf("pulseIndex is %i\n", pulseIndex);
 #endif
 
