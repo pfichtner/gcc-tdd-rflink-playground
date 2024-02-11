@@ -166,8 +166,8 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
                     AVTK_PULSE_DURATION_MID_D, 8 * syncwordLength);
     if (!bitsProccessed) {
 #ifdef PLUGIN_077_DEBUG
-#endif
       printf("Error on syncword decode\n");
+#endif
       return oneMessageProcessed;
     }
 
@@ -224,8 +224,8 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
                            2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration,
                            0, true)) {
 #ifdef PLUGIN_077_DEBUG
-#endif
       printf("Could not decode buttons manchester data\n");
+#endif
       return oneMessageProcessed;
     }
 // TODO we would have to shift back the result because we shifted it too much to
