@@ -132,6 +132,22 @@ bool checkSyncWord(const unsigned char synword[], const unsigned char pattern[],
   return true;
 }
 
+u_short countPreamblePairs(const uint16_t pulses[], int *pulseIndex, size_t pulseCount, size_t AVTK_SyncPairsCount, uint16_t AVTK_PulseMinDuration, uint16_t AVTK_PulseMaxDuration) {
+    u_short preamblePairsFound = 0;
+
+    for (size_t i = 0; i < AVTK_SyncPairsCount && *pulseIndex < pulseCount - 1; i++, (*pulseIndex) += 2) {
+        if (value_between(pulses[*pulseIndex], AVTK_PulseMinDuration, AVTK_PulseMaxDuration) &&
+            value_between(pulses[*pulseIndex + 1], AVTK_PulseMinDuration, AVTK_PulseMaxDuration)) {
+            preamblePairsFound++;
+        } else if (preamblePairsFound > 0) {
+            // if we didn't already have a match, we ignore as mismatch, otherwise we break here
+            break;
+        }
+    }
+
+    return preamblePairsFound;
+}
+
 bool decode(uint16_t pulses[], size_t pulseCount) {
   const int syncWordSize = 8;
   unsigned char syncwordChars[] = {0xCA, 0xCA, 0x53, 0x53};
@@ -143,20 +159,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
 
   while (pulseIndex + (int)(2 * AVTK_SyncPairsCount + syncWordSize) <
          pulseCount) {
-    u_short preamblePairsFound = 0;
-    for (size_t i = 0; i < AVTK_SyncPairsCount; i++) {
-      if (value_between(pulses[pulseIndex], AVTK_PulseMinDuration,
-                        AVTK_PulseMaxDuration) &&
-          value_between(pulses[pulseIndex + 1], AVTK_PulseMinDuration,
-                        AVTK_PulseMaxDuration)) {
-        preamblePairsFound++;
-      } else if (preamblePairsFound > 0) {
-        // if we didn't already had a match, we ignore as mismatch, otherwise we
-        // break here
-        break;
-      }
-      pulseIndex += 2;
-    }
+    u_short preamblePairsFound = countPreamblePairs(pulses, &pulseIndex, pulseCount, AVTK_SyncPairsCount, AVTK_PulseMinDuration, AVTK_PulseMaxDuration);
 
     if (preamblePairsFound < AVTK_MinSyncPairs) {
 #ifdef PLUGIN_077_DEBUG
@@ -244,22 +247,28 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
     printf("pulseIndex is %i\n", pulseIndex);
 #endif
 
-    if (pulseCount > pulseIndex + 1 + 2 && pulses[pulseIndex + 1 + 2] >= 4 * AVTK_PULSE_DURATION_MID_D) {
-      // byte remaining[] = { 0, 0, 0 };
-      uint8_t remaining[] = { 0, 0 };
-      if (!decode_bits(remaining, pulses, pulseCount, &pulseIndex, AVTK_PULSE_DURATION_MID_D, 9)) {
+    if (pulseIndex + 2 * AVTK_SyncPairsCount < pulseCount) {
+      short savedPulseIndex = pulseIndex;
+      preamblePairsFound = countPreamblePairs(pulses, &pulseIndex, pulseCount, AVTK_SyncPairsCount, AVTK_PulseMinDuration, AVTK_PulseMaxDuration);
+      pulseIndex = savedPulseIndex;
+
+      if (preamblePairsFound < AVTK_SyncPairsCount) {
+        // byte remaining[] = { 0, 0, 0 };
+        uint8_t remaining[] = { 0, 0 };
+        if (!decode_bits(remaining, pulses, pulseCount, &pulseIndex, AVTK_PULSE_DURATION_MID_D, 9)) {
 #ifdef PLUGIN_077_DEBUG
-        printf("Error on remaining bits decode\n");
+          printf("Error on remaining bits decode\n");
 #endif
-        return oneMessageProcessed;
+          return oneMessageProcessed;
+        }
+#ifdef PLUGIN_077_DEBUG
+        printf("remaining: %02x%02x\n", remaining[0], remaining[1]);
+#endif
+        pulseIndex++;
+#ifdef PLUGIN_077_DEBUG
+      printf("pulseIndex is %i\n", pulseIndex);
+#endif
       }
-#ifdef PLUGIN_077_DEBUG
-      printf("remaining: %02x%02x\n", remaining[0], remaining[1]);
-#endif
-      pulseIndex++;
-#ifdef PLUGIN_077_DEBUG
-    printf("pulseIndex is %i\n", pulseIndex);
-#endif
     }
 
     oneMessageProcessed = true;
