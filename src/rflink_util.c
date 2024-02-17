@@ -228,12 +228,10 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
 
     // byte buttons[] = { 0 };
     uint8_t buttons[] = { 0 };
-    decodeResult = decode_manchester(buttons, 4, pulses, pulseCount, &pulseIndex,
+    if (!decode_manchester(buttons, 4, pulses, pulseCount, &pulseIndex,
                            AVTK_PulseMinDuration, AVTK_PulseMaxDuration,
                            2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration,
-                           0, true);
-    pulses[alteredIndex] = alteredValue;
-    if (!decodeResult) {
+                           0, true)) {
 #ifdef PLUGIN_077_DEBUG
       printf("Could not decode buttons manchester data\n");
 #endif
