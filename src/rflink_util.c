@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define PLUGIN_077_DEBUG
-// #define MANCHESTER_DEBUG
+//#define PLUGIN_077_DEBUG
+//#define MANCHESTER_DEBUG
 
 #define AVTK_PULSE_DURATION_MID_D 480
 #define AVTK_PULSE_DURATION_MIN_D 370
@@ -50,6 +50,7 @@ bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount,
   const uint8_t endBitCount = expectedBitCount + bitOffset;
 
   for (uint8_t bitIndex = bitOffset; bitIndex < endBitCount; bitIndex++) {
+    bool isLast = bitIndex + 1 == endBitCount;
     int currentFrameByteIndex = bitIndex / bitsPerByte;
     uint16_t bitDuration0 = pulses[*pulseIndex];
     uint16_t bitDuration1 = pulses[*pulseIndex + 1];
@@ -58,20 +59,27 @@ bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount,
     if (value_between_(bitDuration0, shortPulseMinDuration,
                        shortPulseMaxDuration) &&
         value_between_(bitDuration1, longPulseMinDuration,
-                       longPulseMaxDuration)) {
+                       isLast ? UINT16_MAX : longPulseMaxDuration)) {
       uint8_t offset = bitIndex % bitsPerByte;
       frame[currentFrameByteIndex] |=
           1 << (lsb ? offset : (bitsPerByte - 1 - offset));
+#ifdef MANCHESTER_DEBUG
+      printf("MANCHESTER_DEBUG: frame %i, pulseIndex %i: 100 -> 1\n", currentFrameByteIndex, *pulseIndex);
+#endif
     } else if (!value_between_(bitDuration0, longPulseMinDuration,
                                longPulseMaxDuration) ||
                !value_between_(bitDuration1, shortPulseMinDuration,
-                               shortPulseMaxDuration)) {
+                               isLast ? UINT16_MAX : shortPulseMaxDuration)) {
 #ifdef MANCHESTER_DEBUG
       printf("MANCHESTER_DEBUG: Invalid duration at pulse %d - bit %d: %d\n",
              *pulseIndex, bitIndex,
-             bitDuration0 * RFLink::Signal::RawSignal.Multiply);
+             bitDuration0);
 #endif
       return false; // unexpected bit duration, invalid format
+    } else {
+#ifdef MANCHESTER_DEBUG
+      printf("MANCHESTER_DEBUG: frame %i, pulseIndex %i: 110 -> 0\n", currentFrameByteIndex, *pulseIndex);
+#endif
     }
 
     *pulseIndex += 2;
@@ -219,11 +227,13 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
 #endif
 
     // byte buttons[] = { 0 };
-    uint8_t buttons[] = {0};
-    if (!decode_manchester(buttons, 1, pulses, pulseCount, &pulseIndex,
+    uint8_t buttons[] = { 0 };
+    decodeResult = decode_manchester(buttons, 4, pulses, pulseCount, &pulseIndex,
                            AVTK_PulseMinDuration, AVTK_PulseMaxDuration,
                            2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration,
-                           0, true)) {
+                           0, true);
+    pulses[alteredIndex] = alteredValue;
+    if (!decodeResult) {
 #ifdef PLUGIN_077_DEBUG
       printf("Could not decode buttons manchester data\n");
 #endif
@@ -236,20 +246,23 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
     printf("pulseIndex is %i\n", pulseIndex);
 #endif
 
-    // byte remaining[] = { 0, 0, 0 };
-    uint8_t remaining[] = { 0, 0, 0 };
-    if (!decode_bits(remaining, pulses, pulseCount, &pulseIndex, AVTK_PULSE_DURATION_MID_D, 21)) {
+    if (pulseCount > pulseIndex + 1 + 2 && pulses[pulseIndex + 1 + 2] >= 4 * AVTK_PULSE_DURATION_MID_D) {
+      // byte remaining[] = { 0, 0, 0 };
+      uint8_t remaining[] = { 0, 0 };
+      if (!decode_bits(remaining, pulses, pulseCount, &pulseIndex, AVTK_PULSE_DURATION_MID_D, 9)) {
 #ifdef PLUGIN_077_DEBUG
-      printf("Error on remaining bits decode\n");
+        printf("Error on remaining bits decode\n");
 #endif
-      return oneMessageProcessed;
-    }
-    pulseIndex++;
-
+        return oneMessageProcessed;
+      }
 #ifdef PLUGIN_077_DEBUG
-    printf("remaining: %02x%02x%02x\n", remaining[0], remaining[1], remaining[2]);
+      printf("remaining: %02x%02x\n", remaining[0], remaining[1]);
+#endif
+      pulseIndex++;
+#ifdef PLUGIN_077_DEBUG
     printf("pulseIndex is %i\n", pulseIndex);
 #endif
+    }
 
     oneMessageProcessed = true;
   }
