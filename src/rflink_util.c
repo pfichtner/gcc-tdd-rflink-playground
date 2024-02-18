@@ -272,7 +272,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
           return oneMessageProcessed;
         }
 #ifdef PLUGIN_077_DEBUG
-        printf("crc: %02x\n", crc[0]);
+        printf("CRC: 0x%02x\n", crc[0]);
 #endif
         pulseIndex += 2;
 #ifdef PLUGIN_077_DEBUG
