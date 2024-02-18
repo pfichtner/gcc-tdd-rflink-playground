@@ -106,13 +106,11 @@ uint8_t decode_bits(uint8_t frame[], const uint16_t *pulses,
        i++, (*pulseIndex)++) {
     size_t bits =
         (size_t)((pulses[*pulseIndex] + (pulseDuration / 2)) / pulseDuration);
-
     for (size_t j = 0; j < bits; j++) {
       frame[bitsRead / 8] <<= 1;
       frame[bitsRead / 8] |= i % 2 == 0;
       bitsRead++;
       if (bitsRead >= bitsToRead) {
-        frame[bitsRead / 8] <<= (8 - bitsRead) % 8;
         return j + 1;
       }
     }
@@ -122,10 +120,10 @@ uint8_t decode_bits(uint8_t frame[], const uint16_t *pulses,
   return bitsRead >= bitsToRead ? 0 : -1;
 }
 
-bool checkSyncWord(const unsigned char synword[], const unsigned char pattern[],
+bool checkSyncWord(const unsigned char syncword[], const unsigned char pattern[],
                    size_t length) {
   for (size_t i = 0; i < length; i++) {
-    if (synword[i] != pattern[i]) {
+    if (syncword[i] != pattern[i]) {
       return false;
     }
   }
@@ -152,7 +150,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
   const int syncWordSize = 8;
   unsigned char syncwordChars[] = {0xCA, 0xCA, 0x53, 0x53};
   size_t syncwordLength = sizeof(syncwordChars) / sizeof(syncwordChars[0]);
-  uint8_t synword[syncwordLength];
+  uint8_t syncword[syncwordLength];
 
   int pulseIndex = 1;
   bool oneMessageProcessed = false;
@@ -173,8 +171,9 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
            AVTK_MinSyncPairs);
 #endif
 
+    for (size_t i = 0; i < syncwordLength; i++) syncword[i] = 0;
     uint8_t bitsProccessed =
-        decode_bits(synword, pulses, pulseCount, &pulseIndex,
+        decode_bits(syncword, pulses, pulseCount, &pulseIndex,
                     AVTK_PULSE_DURATION_MID_D, 8 * syncwordLength);
     if (!bitsProccessed) {
 #ifdef PLUGIN_077_DEBUG
@@ -190,7 +189,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
     }
 #endif
 
-    if (!checkSyncWord(synword, syncwordChars, syncwordLength)) {
+    if (!checkSyncWord(syncword, syncwordChars, syncwordLength)) {
 #ifdef PLUGIN_077_DEBUG
       printf(" not found\n");
 #endif
