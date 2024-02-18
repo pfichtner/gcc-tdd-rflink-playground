@@ -201,7 +201,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
 #endif
 
     int alteredIndex = pulseIndex;
-    uint16_t alteredValue = pulses[pulseIndex];
+    uint16_t alteredValue = pulses[alteredIndex];
     if (isLowPulseIndex(pulseIndex)) {
       // the last pulse "decode_bits" processed was high
       pulses[pulseIndex] =
@@ -253,18 +253,28 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
       pulseIndex = savedPulseIndex;
 
       if (preamblePairsFound < AVTK_SyncPairsCount) {
-        // byte remaining[] = { 0, 0, 0 };
-        uint8_t remaining[] = { 0, 0 };
-        if (!decode_bits(remaining, pulses, pulseCount, &pulseIndex, AVTK_PULSE_DURATION_MID_D, 9)) {
+        pulseIndex--;
+
+        alteredIndex = pulseIndex;
+        alteredValue = pulses[alteredIndex];
+        bool bitNr4IsSet = buttons[0] & 0b00010000; // 4th bit to the left, 0=110 (2x 1x), 1=100 (1x 2x)
+        pulses[alteredIndex] -= ((bitNr4IsSet ? 2 : 1) * AVTK_PulseDuration);
+        
+        // byte crc[] = { 0 };
+        uint8_t crc[] = { 0 };
+        decodeResult = decode_bits(crc, pulses, pulseCount, &pulseIndex, AVTK_PULSE_DURATION_MID_D, 8);
+        pulses[alteredIndex] = alteredValue;
+
+        if (!decodeResult) {
 #ifdef PLUGIN_077_DEBUG
-          printf("Error on remaining bits decode\n");
+          printf("Error on crc decode\n");
 #endif
           return oneMessageProcessed;
         }
 #ifdef PLUGIN_077_DEBUG
-        printf("remaining: %02x%02x\n", remaining[0], remaining[1]);
+        printf("crc: %02x\n", crc[0]);
 #endif
-        pulseIndex++;
+        pulseIndex += 2;
 #ifdef PLUGIN_077_DEBUG
       printf("pulseIndex is %i\n", pulseIndex);
 #endif
