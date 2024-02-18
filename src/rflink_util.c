@@ -95,20 +95,21 @@ bool value_between(uint16_t value, uint16_t min, uint16_t max) {
 }
 
 // inline
-bool isLowPulseIndex(const int pulseIndex) { return (pulseIndex % 2 == 1); }
+bool isLowPulseIndex(const int pulseIndex) { return (pulseIndex % 2 == 0); }
 
 uint8_t decode_bits(uint8_t frame[], const uint16_t *pulses,
                     const int pulsesCount, int *pulseIndex,
                     uint16_t pulseDuration, size_t bitsToRead) {
   size_t bitsRead = 0;
 
-  for (size_t i = 0; *pulseIndex + i < pulsesCount && bitsRead < bitsToRead;
-       i++, (*pulseIndex)++) {
+  for (; *pulseIndex < pulsesCount && bitsRead < bitsToRead; (*pulseIndex)++) {
     size_t bits =
         (size_t)((pulses[*pulseIndex] + (pulseDuration / 2)) / pulseDuration);
     for (size_t j = 0; j < bits; j++) {
       frame[bitsRead / 8] <<= 1;
-      frame[bitsRead / 8] |= i % 2 == 0;
+      if (!isLowPulseIndex(*pulseIndex)) {
+        frame[bitsRead / 8] |= 1;
+      }
       bitsRead++;
       if (bitsRead >= bitsToRead) {
         return j + 1;
@@ -201,7 +202,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
 
     int alteredIndex = pulseIndex;
     uint16_t alteredValue = pulses[alteredIndex];
-    if (isLowPulseIndex(pulseIndex)) {
+    if (!isLowPulseIndex(pulseIndex)) {
       // the last pulse "decode_bits" processed was high
       pulses[pulseIndex] =
           pulses[pulseIndex] - bitsProccessed * AVTK_PulseDuration;
