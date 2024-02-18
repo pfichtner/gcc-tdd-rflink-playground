@@ -157,7 +157,7 @@ int main() {
   RUN_TEST(ok_because_two_first_preamble_pairs_gets_ignored);
   RUN_TEST(ok_preamble_only_6_of_8_pairs);
   RUN_TEST(nok_because_three_first_preamble_pairs_are_wrong);
-
+  
   RUN_TEST(ok_ph1);
   RUN_TEST(ok_ph2);
   RUN_TEST(ok_ph3);
