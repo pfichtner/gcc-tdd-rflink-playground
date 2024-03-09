@@ -162,12 +162,14 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
 
     if (preamblePairsFound < AVTK_MinSyncPairs) {
 #ifdef PLUGIN_077_DEBUG
+      printf("pulseIndex is %i\n", pulseIndex);
       printf("Preamble not found (%i < %i)\n", preamblePairsFound,
              AVTK_MinSyncPairs);
 #endif
-      return oneMessageProcessed;
+      continue;
     }
 #ifdef PLUGIN_077_DEBUG
+    printf("pulseIndex is %i\n", pulseIndex);
     printf("Preamble found (%i >= %i)\n", preamblePairsFound,
            AVTK_MinSyncPairs);
 #endif
@@ -180,7 +182,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
 #ifdef PLUGIN_077_DEBUG
       printf("Error on syncword decode\n");
 #endif
-      return oneMessageProcessed;
+      continue;
     }
 
 #ifdef PLUGIN_077_DEBUG
@@ -194,7 +196,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
 #ifdef PLUGIN_077_DEBUG
       printf(" not found\n");
 #endif
-      return oneMessageProcessed;
+      continue;
     }
 #ifdef PLUGIN_077_DEBUG
     printf(" found\n");
@@ -221,7 +223,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
 #ifdef PLUGIN_077_DEBUG
       printf("Could not decode address manchester data\n");
 #endif
-      return oneMessageProcessed;
+      continue;
     }
 #ifdef PLUGIN_077_DEBUG
     printf("Address (lsb): %02x %02x %02x %02x\n", address[0], address[1],
@@ -238,7 +240,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
 #ifdef PLUGIN_077_DEBUG
       printf("Could not decode buttons manchester data\n");
 #endif
-      return oneMessageProcessed;
+      continue;
     }
 // TODO we would have to shift back the result because we shifted it too much to
 // the left because we think that everything has 8 bits
@@ -269,7 +271,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
 #ifdef PLUGIN_077_DEBUG
           printf("Error on crc decode\n");
 #endif
-          return oneMessageProcessed;
+          continue;
         }
 #ifdef PLUGIN_077_DEBUG
         printf("CRC: 0x%02x\n", crc[0]);
