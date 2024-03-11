@@ -154,8 +154,6 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
   uint8_t syncword[syncwordLength];
 
   int pulseIndex = 1;
-  bool oneMessageProcessed = false;
-
   while (pulseIndex + (int)(2 * AVTK_SyncPairsCount + syncWordSize) <
          pulseCount) {
     u_short preamblePairsFound = countPreamblePairs(pulses, &pulseIndex, pulseCount, AVTK_SyncPairsCount, AVTK_PulseMinDuration, AVTK_PulseMaxDuration);
@@ -283,8 +281,8 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
       }
     }
 
-    oneMessageProcessed = true;
+    return true;
   }
 
-  return oneMessageProcessed;
+  return false;
 }
