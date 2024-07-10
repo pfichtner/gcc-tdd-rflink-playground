@@ -74,7 +74,7 @@ bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount,
                        isLast ? UINT16_MAX : longPulseMaxDuration)) {
       uint8_t offset = bitIndex % bitsPerByte;
       frame[currentFrameByteIndex] |=
-          1 << (lsb ? offset : (bitsPerByte - 1 - offset));
+          1 << (lsb ? (bitsPerByte - 1 - offset) : offset);
 #ifdef MANCHESTER_DEBUG
       printf("MANCHESTER_DEBUG: frame %i, pulseIndex %i: 100 -> 1\n", currentFrameByteIndex, *pulseIndex);
 #endif
