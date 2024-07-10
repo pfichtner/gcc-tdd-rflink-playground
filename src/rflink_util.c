@@ -23,6 +23,18 @@ const u_int16_t AVTK_PulseMaxDuration = AVTK_PULSE_DURATION_MAX_D;
 const u_short AVTK_SyncPairsCount = 8;
 const u_short AVTK_MinSyncPairs = 6;
 
+uint32_t reverseBits(uint32_t value, unsigned int bitWidth) {
+    uint32_t reversed = 0;
+    for (unsigned int i = 0; i < bitWidth; ++i) {
+        reversed <<= 1;
+        if (value & 1) {
+            reversed |= 1;
+        }
+        value >>= 1;
+    }
+    return reversed;
+}
+
 bool value_between_(uint16_t value, uint16_t min, uint16_t max) {
   return (value > min && value < max);
 }
@@ -242,43 +254,49 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
     }
 // TODO we would have to shift back the result because we shifted it too much to
 // the left because we think that everything has 8 bits
-#ifdef PLUGIN_077_DEBUG
-    printf("Buttons: %02x\n", buttons[0]);
-    printf("pulseIndex is %i\n", pulseIndex);
-#endif
 
+    bool hasCrc = false;
     if (pulseIndex + 2 * AVTK_SyncPairsCount < pulseCount) {
       short savedPulseIndex = pulseIndex;
       preamblePairsFound = countPreamblePairs(pulses, &pulseIndex, pulseCount, AVTK_SyncPairsCount, AVTK_PulseMinDuration, AVTK_PulseMaxDuration);
       pulseIndex = savedPulseIndex;
+      hasCrc = preamblePairsFound < AVTK_SyncPairsCount;
+    }
 
-      if (preamblePairsFound < AVTK_SyncPairsCount) {
-        pulseIndex--;
+    if (!hasCrc) {
+        buttons[0] = reverseBits(buttons[0], 4);
+    }
+    #ifdef PLUGIN_077_DEBUG
+    printf("Buttons: %d\n", buttons[0]);
+    printf("pulseIndex is %i\n", pulseIndex);
+    #endif
+    
+    if (hasCrc) {
+      pulseIndex--;
 
-        alteredIndex = pulseIndex;
-        alteredValue = pulses[alteredIndex];
-        bool bitNr4IsSet = buttons[0] & 0b00010000; // 4th bit to the left, 0=110 (2x 1x), 1=100 (1x 2x)
-        pulses[alteredIndex] -= ((bitNr4IsSet ? 2 : 1) * AVTK_PulseDuration);
-        
-        // byte crc[] = { 0 };
-        uint8_t crc[] = { 0 };
-        decodeResult = decode_bits(crc, pulses, pulseCount, &pulseIndex, AVTK_PULSE_DURATION_MID_D, 8);
-        pulses[alteredIndex] = alteredValue;
+      alteredIndex = pulseIndex;
+      alteredValue = pulses[alteredIndex];
+      bool bitNr4IsSet = buttons[0] & 0b00010000; // 4th bit to the left, 0=110 (2x 1x), 1=100 (1x 2x)
+      pulses[alteredIndex] -= ((bitNr4IsSet ? 2 : 1) * AVTK_PulseDuration);
+      
+      // byte crc[] = { 0 };
+      uint8_t crc[] = { 0 };
+      decodeResult = decode_bits(crc, pulses, pulseCount, &pulseIndex, AVTK_PULSE_DURATION_MID_D, 8);
+      pulses[alteredIndex] = alteredValue;
 
-        if (!decodeResult) {
+      if (!decodeResult) {
 #ifdef PLUGIN_077_DEBUG
-          printf("Error on crc decode\n");
+        printf("Error on crc decode\n");
 #endif
-          continue;
-        }
-#ifdef PLUGIN_077_DEBUG
-        printf("CRC: 0x%02x\n", crc[0]);
-#endif
-        pulseIndex += 2;
-#ifdef PLUGIN_077_DEBUG
-      printf("pulseIndex is %i\n", pulseIndex);
-#endif
+        continue;
       }
+#ifdef PLUGIN_077_DEBUG
+      printf("CRC: 0x%02x\n", crc[0]);
+#endif
+      pulseIndex += 2;
+#ifdef PLUGIN_077_DEBUG
+    printf("pulseIndex is %i\n", pulseIndex);
+#endif
     }
 
     return true;
