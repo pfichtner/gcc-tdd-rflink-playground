@@ -45,7 +45,7 @@ bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount,
                        uint16_t shortPulseMaxDuration,
                        uint16_t longPulseMinDuration,
                        uint16_t longPulseMaxDuration, uint8_t bitOffset,
-                       bool lsb) {
+                       const uint8_t bitsPerByte, bool lsb) {
   if (*pulseIndex + (expectedBitCount - 1) * 2 > pulsesCount) {
 #ifdef MANCHESTER_DEBUG
     printf(
@@ -57,8 +57,6 @@ bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount,
     return false;
   }
 
-  // TODO we could add parameter "bitsPerByte"
-  const uint8_t bitsPerByte = 8;
   const uint8_t endBitCount = expectedBitCount + bitOffset;
 
   for (uint8_t bitIndex = bitOffset; bitIndex < endBitCount; bitIndex++) {
@@ -226,7 +224,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
     bool decodeResult = decode_manchester(
         address, 32, pulses, pulseCount, &pulseIndex, AVTK_PulseMinDuration,
         AVTK_PulseMaxDuration, 2 * AVTK_PulseMinDuration,
-        2 * AVTK_PulseMaxDuration, 0, true);
+        2 * AVTK_PulseMaxDuration, 0, 8, true);
     pulses[alteredIndex] = alteredValue;
 
     if (!decodeResult) {
@@ -246,7 +244,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
     if (!decode_manchester(buttons, 4, pulses, pulseCount, &pulseIndex,
                            AVTK_PulseMinDuration, AVTK_PulseMaxDuration,
                            2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration,
-                           0, true)) {
+                           0, 4, true)) {
 #ifdef PLUGIN_077_DEBUG
       printf("Could not decode buttons manchester data\n");
 #endif
@@ -263,11 +261,11 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
       hasCrc = preamblePairsFound < AVTK_SyncPairsCount;
     }
 
-    if (!hasCrc) {
+    if (hasCrc) {
         buttons[0] = reverseBits(buttons[0], 4);
     }
     #ifdef PLUGIN_077_DEBUG
-    printf("Buttons: %d\n", buttons[0]);
+    printf("Buttons: %x\n", buttons[0]);
     printf("pulseIndex is %i\n", pulseIndex);
     #endif
     
