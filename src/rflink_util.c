@@ -12,6 +12,8 @@
 #define AVTK_PULSE_DURATION_MIN_D 370
 #define AVTK_PULSE_DURATION_MAX_D 590
 
+#define BUTTONS_BITS_COUNT 4
+
 const u_int16_t AVTK_PulseDuration = AVTK_PULSE_DURATION_MID_D;
 const u_int16_t AVTK_PulseMinDuration = AVTK_PULSE_DURATION_MIN_D;
 const u_int16_t AVTK_PulseMaxDuration = AVTK_PULSE_DURATION_MAX_D;
@@ -232,10 +234,10 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
 
     // byte buttons[] = { 0 };
     uint8_t buttons[] = { 0 };
-    if (!decode_manchester(buttons, 4, pulses, pulseCount, &pulseIndex,
+    if (!decode_manchester(buttons, BUTTONS_BITS_COUNT, pulses, pulseCount, &pulseIndex,
                            AVTK_PulseMinDuration, AVTK_PulseMaxDuration,
                            2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration,
-                           0, 4, true)) {
+                           0, BUTTONS_BITS_COUNT, true)) {
 #ifdef PLUGIN_077_DEBUG
       printf("Could not decode buttons manchester data\n");
 #endif
@@ -253,11 +255,11 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
     }
 
     if (hasCrc) {
-        pulseIndex -= (2 * 4);
-        if (!decode_manchester(buttons, 4, pulses, pulseCount, &pulseIndex,
+        pulseIndex -= (2 * BUTTONS_BITS_COUNT);
+        if (!decode_manchester(buttons, BUTTONS_BITS_COUNT, pulses, pulseCount, &pulseIndex,
                                 AVTK_PulseMinDuration, AVTK_PulseMaxDuration,
                                 2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration,
-                                0, 4, false)) {
+                                0, BUTTONS_BITS_COUNT, false)) {
 #ifdef PLUGIN_077_DEBUG
     printf("Could not (re)decode buttons manchester data\n");
 #endif
