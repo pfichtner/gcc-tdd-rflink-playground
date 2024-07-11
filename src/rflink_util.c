@@ -23,18 +23,6 @@ const u_int16_t AVTK_PulseMaxDuration = AVTK_PULSE_DURATION_MAX_D;
 const u_short AVTK_SyncPairsCount = 8;
 const u_short AVTK_MinSyncPairs = 6;
 
-uint32_t reverseBits(uint32_t value, unsigned int bitWidth) {
-    uint32_t reversed = 0;
-    for (unsigned int i = 0; i < bitWidth; ++i) {
-        reversed <<= 1;
-        if (value & 1) {
-            reversed |= 1;
-        }
-        value >>= 1;
-    }
-    return reversed;
-}
-
 bool value_between_(uint16_t value, uint16_t min, uint16_t max) {
   return (value > min && value < max);
 }
@@ -62,6 +50,10 @@ bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount,
   for (uint8_t bitIndex = bitOffset; bitIndex < endBitCount; bitIndex++) {
     bool isLast = bitIndex + 1 == endBitCount;
     int currentFrameByteIndex = bitIndex / bitsPerByte;
+    uint8_t offset = bitIndex % bitsPerByte;
+    if (offset == 0) {
+        frame[currentFrameByteIndex] = 0;
+    }
     uint16_t bitDuration0 = pulses[*pulseIndex];
     uint16_t bitDuration1 = pulses[*pulseIndex + 1];
 
@@ -70,7 +62,6 @@ bool decode_manchester(uint8_t frame[], uint8_t expectedBitCount,
                        shortPulseMaxDuration) &&
         value_between_(bitDuration1, longPulseMinDuration,
                        isLast ? UINT16_MAX : longPulseMaxDuration)) {
-      uint8_t offset = bitIndex % bitsPerByte;
       frame[currentFrameByteIndex] |=
           1 << (lsb ? (bitsPerByte - 1 - offset) : offset);
 #ifdef MANCHESTER_DEBUG
@@ -262,7 +253,16 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
     }
 
     if (hasCrc) {
-        buttons[0] = reverseBits(buttons[0], 4);
+        pulseIndex -= (2 * 4);
+        if (!decode_manchester(buttons, 4, pulses, pulseCount, &pulseIndex,
+                                AVTK_PulseMinDuration, AVTK_PulseMaxDuration,
+                                2 * AVTK_PulseMinDuration, 2 * AVTK_PulseMaxDuration,
+                                0, 4, false)) {
+#ifdef PLUGIN_077_DEBUG
+    printf("Could not (re)decode buttons manchester data\n");
+#endif
+          continue;
+        }
     }
     #ifdef PLUGIN_077_DEBUG
     printf("Buttons: %x\n", buttons[0]);
