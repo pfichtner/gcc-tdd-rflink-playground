@@ -181,7 +181,7 @@ int main() {
   RUN_TEST(nok_because_three_first_preamble_pairs_are_wrong);
   RUN_TEST(ok_because_after_three_first_preamble_pairs_are_wrong_second_message_is_ok);
   
-  //RUN_TEST(ok_doorbell2);
+  RUN_TEST(ok_doorbell2);
 
   RUN_TEST(ok_ph1);
   RUN_TEST(ok_ph2);
