@@ -13,6 +13,7 @@
 #define AVTK_PULSE_DURATION_MAX_D 590
 
 #define BUTTONS_BITS_COUNT 4
+// #define SWAP_BIT_ORDER_IF_SIGNAL_HAS_CRC
 
 const u_int16_t AVTK_PulseDuration = AVTK_PULSE_DURATION_MID_D;
 const u_int16_t AVTK_PulseMinDuration = AVTK_PULSE_DURATION_MIN_D;
@@ -254,6 +255,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
       hasCrc = preamblePairsFound < AVTK_SyncPairsCount;
     }
 
+#ifdef SWAP_BIT_ORDER_IF_SIGNAL_HAS_CRC
     if (hasCrc) {
         pulseIndex -= (2 * BUTTONS_BITS_COUNT);
         if (!decode_manchester(buttons, BUTTONS_BITS_COUNT, pulses, pulseCount, &pulseIndex,
@@ -266,6 +268,7 @@ bool decode(uint16_t pulses[], size_t pulseCount) {
           continue;
         }
     }
+#endif
     #ifdef PLUGIN_077_DEBUG
     printf("Buttons: %x\n", buttons[0]);
     printf("pulseIndex is %i\n", pulseIndex);
